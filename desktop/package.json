@@ -1,0 +1,36 @@
+{
+  "name": "parking-report-workbench",
+  "version": "1.0.5",
+  "productName": "停车报表工作台",
+  "private": true,
+  "description": "按入场通道导出停车报表并重汇总运营台账",
+  "author": "Parking Report Workbench",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs",
+    "pack": "electron-builder --win --x64 --dir --publish never",
+    "dist": "electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.5.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "local.parking-report.workbench",
+    "executableName": "ANPING",
+    "artifactName": "ANPING.exe",
+    "directories": {"output": "dist", "buildResources": "build"},
+    "files": ["package.json", "src/**/*"],
+    "extraResources": [
+      {"from": "build/worker/ParkingReportWorker", "to": "worker"},
+      {"from": "build/chromium", "to": "chromium"}
+    ],
+    "win": {
+      "target": [{"target": "portable", "arch": ["x64"]}],
+      "icon": "assets/icon.ico",
+      "signExecutable": false
+    },
+    "portable": {"requestExecutionLevel": "user"}
+  }
+}

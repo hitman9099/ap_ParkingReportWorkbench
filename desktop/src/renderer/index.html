@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>停车报表工作台</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./renderer.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><span class="brand-symbol"><span></span></span></span>
+        <span class="brand-wordmark">ANPING</span>
+        <span class="brand-name">停车报表工作台</span>
+      </div>
+      <span id="shell-auth" class="shell-status" data-tone="neutral">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="shell-auth-text">正在读取登录状态</span>
+      </span>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="工作台导航">
+        <nav class="navigation">
+          <button id="nav-workspace" class="nav-button" type="button" aria-current="page" aria-controls="export-view">
+            <span class="glyph glyph-export" aria-hidden="true"></span>
+            新建导出
+          </button>
+          <button id="nav-history" class="nav-button" type="button" aria-controls="history-view">
+            <span class="glyph glyph-history" aria-hidden="true"></span>
+            历史记录
+            <span id="history-count" class="nav-count" hidden></span>
+          </button>
+        </nav>
+
+      </aside>
+
+      <main class="main">
+        <div id="notice" class="notice" role="alert" hidden></div>
+        <section id="export-view" aria-labelledby="export-title">
+          <div class="page-heading">
+            <h1 id="export-title" tabindex="-1">新建导出</h1>
+            <p>按台账地块查找车场，生成通道报表和校核版台账。</p>
+          </div>
+
+          <section id="auth-panel" class="auth-panel" data-tone="neutral" aria-labelledby="auth-title">
+            <div class="auth-icon" aria-hidden="true"><span class="glyph glyph-lock"></span></div>
+            <div class="auth-body">
+              <h2 id="auth-title">验证平台登录</h2>
+              <p id="auth-message" role="status">正在读取本机登录状态。</p>
+            </div>
+            <button id="verify-button" class="button button-auth" type="button" disabled>验证浏览器</button>
+          </section>
+
+          <details id="sources-panel" class="sources-panel">
+            <summary>
+              <span class="sources-title">查询规则与数据来源</span>
+              <span class="sources-platform">利民停车管理平台</span>
+            </summary>
+            <div class="sources-content">
+              <section aria-labelledby="platform-source-title">
+                <h3 id="platform-source-title">线上来源</h3>
+                <dl class="source-list">
+                  <div><dt>平台网址</dt><dd><code>https://s.qcyuns.com/</code></dd></div>
+                  <div><dt>记录查询</dt><dd>项目管理 → 项目/编码 → 车场 → 记录查询 → 车辆进出记录</dd></div>
+                  <div><dt>报表下载</dt><dd>报表汇总 → 报表导出下载</dd></div>
+                </dl>
+              </section>
+              <section aria-labelledby="local-source-title">
+                <h3 id="local-source-title">本地保存位置</h3>
+                <dl class="source-list">
+                  <div><dt>设定输出目录</dt><dd><code id="source-output-path">—</code></dd></div>
+                  <div><dt id="source-task-label">计划任务目录</dt><dd><code id="source-task-path">选择统计日期后显示</code></dd></div>
+                  <div><dt>原始报表目录</dt><dd><code id="source-raw-path">选择统计日期后显示</code></dd></div>
+                </dl>
+              </section>
+              <section class="source-rules" aria-labelledby="source-rule-title">
+                <h3 id="source-rule-title">查询和核对规则</h3>
+                <ul>
+                  <li>按台账地块查找项目。起止日期均包含，出入状态留空，逐个查询可选入场通道。</li>
+                  <li>按车场、通道、日期和条数核验报表。台账时长取已核验出场记录的有效时长，按小时显示两位小数。</li>
+                  <li>未找到、无可用通道或导出失败的车场会列出原因。续跑时复用已完成的通道报表。</li>
+                </ul>
+              </section>
+            </div>
+          </details>
+
+          <div class="work-grid">
+            <section class="card export-card" aria-labelledby="config-title">
+              <div class="card-heading">
+                <h2 id="config-title">导出设置</h2>
+                <span id="config-status" class="badge" data-tone="neutral">待验证</span>
+              </div>
+              <form id="export-form" novalidate>
+                <fieldset id="config-fields" class="config-fields" disabled>
+                  <legend class="sr-only">导出参数</legend>
+                  <div class="field">
+                    <label for="ledger-path">台账文件</label>
+                    <div class="path-field">
+                      <input id="ledger-path" type="text" autocomplete="off" placeholder="请选择 .xlsx 台账" readonly>
+                      <button id="pick-ledger" class="button button-outline" type="button">选择文件</button>
+                    </div>
+                  </div>
+
+                  <fieldset class="date-fieldset">
+                    <legend>统计日期 <span class="legend-detail">含首尾日期</span></legend>
+                    <div class="date-range">
+                      <div>
+                        <label class="sr-only" for="date-start">开始日期</label>
+                        <input id="date-start" type="date" aria-describedby="date-hint" required>
+                      </div>
+                      <span class="date-connector" aria-hidden="true">至</span>
+                      <div>
+                        <label class="sr-only" for="date-end">结束日期</label>
+                        <input id="date-end" type="date" aria-describedby="date-hint" required>
+                      </div>
+                    </div>
+                    <p id="date-hint" class="field-hint" hidden>结束日期须在开始日期当天或之后。</p>
+                  </fieldset>
+
+                  <div class="field">
+                    <label for="output-path">输出目录</label>
+                    <div class="path-field">
+                      <input id="output-path" type="text" autocomplete="off" placeholder="程序所在目录" readonly aria-describedby="output-hint">
+                      <button id="pick-output" class="button button-outline" type="button">选择目录</button>
+                    </div>
+                    <p id="output-hint" class="field-hint">每次导出按日期创建子文件夹。</p>
+                  </div>
+
+                  <div class="workers-row">
+                    <div>
+                      <label for="worker-count">并行车场数</label>
+                      <p id="workers-hint" class="field-hint">同一车场的通道按顺序导出。</p>
+                    </div>
+                    <select id="worker-count" aria-describedby="workers-hint">
+                      <option value="1">1 个</option>
+                      <option value="2">2 个</option>
+                      <option value="3">3 个</option>
+                      <option value="4">4 个</option>
+                    </select>
+                  </div>
+                </fieldset>
+
+                <div class="form-actions">
+                  <p id="start-hint" class="field-hint">验证登录后可开始设置。</p>
+                  <button id="start-button" class="button button-primary" type="submit" disabled>
+                    <span class="glyph glyph-start" aria-hidden="true"></span>
+                    开始导出
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section class="card progress-card" aria-labelledby="progress-title">
+              <div class="card-heading">
+                <h2 id="progress-title">任务进度</h2>
+                <span id="job-status" class="badge" data-tone="neutral">待开始</span>
+              </div>
+              <div class="progress-body">
+                <div class="progress-caption">
+                  <p id="job-phase">暂无任务</p>
+                  <span id="progress-number">—</span>
+                </div>
+                <progress id="job-progress" value="0" max="1" aria-label="车场处理进度"></progress>
+                <div class="current-detail">
+                  <p id="job-current" hidden></p>
+                  <p id="job-message" tabindex="-1">开始导出后，可在这里查看任务进展。</p>
+                  <p id="job-problem" class="job-problem" hidden></p>
+                </div>
+                <dl class="job-metrics" aria-label="导出统计">
+                  <div>
+                    <dt>已完成车场</dt>
+                    <dd id="metric-parks">—</dd>
+                  </div>
+                  <div>
+                    <dt>通道</dt>
+                    <dd id="metric-channels">—</dd>
+                  </div>
+                  <div>
+                    <dt>记录</dt>
+                    <dd id="metric-records">—</dd>
+                  </div>
+                </dl>
+
+                <div id="job-actions" class="job-actions" hidden>
+                  <button id="cancel-button" class="button button-outline button-small" type="button" hidden>停止任务</button>
+                  <button id="resume-button" class="button button-primary button-small" type="button" hidden>继续未完成</button>
+                  <button id="job-open-workbook" class="button button-outline button-small" type="button" hidden>打开台账</button>
+                  <button id="job-open-summary" class="button button-outline button-small" type="button" hidden>打开汇总</button>
+                  <button id="job-open-folder" class="button button-quiet button-small" type="button" hidden>打开目录</button>
+                </div>
+
+                <section id="job-issues" class="job-issues" aria-label="任务问题" hidden>
+                  <p id="job-issue-summary" class="issue-summary"></p>
+                  <div id="job-issue-details"></div>
+                </section>
+
+                <div class="logs">
+                  <h3>任务日志</h3>
+                  <div id="log-scroll" class="log-scroll" tabindex="0" aria-label="任务日志">
+                    <p id="log-empty" class="log-empty">查询、下载与校核进度会显示在这里。</p>
+                    <ol id="log-entries" class="log-entries"></ol>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="history-view" aria-labelledby="history-title" hidden>
+          <div class="page-heading history-heading">
+            <div>
+              <h1 id="history-title" tabindex="-1">历史记录</h1>
+              <p>查看历次生成任务与保存在本地的文件。</p>
+            </div>
+            <button id="new-from-history" class="button button-primary" type="button">新建导出</button>
+          </div>
+
+          <div id="history-empty" class="card history-empty">
+            <span class="history-empty-icon" aria-hidden="true"><span class="glyph glyph-history"></span></span>
+            <h2>暂无历史记录</h2>
+            <p>导出任务结束后，日期、结果和文件位置会出现在这里。</p>
+          </div>
+
+          <div id="history-table-wrap" class="card history-table-wrap" tabindex="0" role="region" aria-label="历史任务表格" hidden>
+            <table class="history-table">
+              <caption class="sr-only">历次导出任务</caption>
+              <thead>
+                <tr>
+                  <th scope="col">任务时间</th>
+                  <th scope="col">源台账</th>
+                  <th scope="col">统计日期</th>
+                  <th scope="col">结果</th>
+                  <th scope="col">文件与操作</th>
+                </tr>
+              </thead>
+              <tbody id="history-rows"></tbody>
+            </table>
+          </div>
+        </section>
+        <span id="status-announcer" class="sr-only" role="status"></span>
+      </main>
+    </div>
+  </div>
+  <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title" aria-describedby="result-message">
+    <div class="result-header">
+      <span id="result-icon" class="result-icon" aria-hidden="true"></span>
+      <h2 id="result-title">任务结果</h2>
+    </div>
+    <div class="result-body">
+      <p id="result-message"></p>
+      <p id="result-problem" class="job-problem" hidden></p>
+      <dl id="result-metrics" class="job-metrics" aria-label="导出统计" hidden>
+        <div><dt>已完成车场</dt><dd id="result-parks">—</dd></div>
+        <div><dt>通道</dt><dd id="result-channels">—</dd></div>
+        <div><dt>记录</dt><dd id="result-records">—</dd></div>
+      </dl>
+      <section id="result-issues" class="job-issues" aria-label="任务问题" hidden></section>
+    </div>
+    <div class="result-actions">
+      <button id="result-details" class="button button-outline" type="button" hidden>查看任务详情</button>
+      <button id="result-close" class="button button-primary" type="button" autofocus>知道了</button>
+    </div>
+  </dialog>
+</body>
+</html>

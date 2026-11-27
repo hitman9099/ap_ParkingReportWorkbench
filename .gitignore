@@ -1,0 +1,12 @@
+/.venv/
+/exports/
+/outputs/
+__pycache__/
+*.py[cod]
+*.xlsx
+*.xlsm
+*.csv
+*.exe
+*.log
+.env
+.env.*
