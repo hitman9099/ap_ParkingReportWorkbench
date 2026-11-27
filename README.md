@@ -66,3 +66,5 @@ npm ci
 ```powershell
 Get-FileHash -LiteralPath .\ANPING.exe -Algorithm SHA256
 ```
+
+维护者和智能体从 [AGENTS.md](AGENTS.md) 和[工程交接](docs/HANDOFF.md) 开始，查看代码入口、排查、验收和发布流程。
