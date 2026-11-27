@@ -1,6 +1,6 @@
 {
   "name": "parking-report-workbench",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "productName": "停车报表工作台",
   "private": true,
   "description": "按入场通道导出停车报表并重汇总运营台账",
